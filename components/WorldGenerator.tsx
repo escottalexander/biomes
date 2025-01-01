@@ -802,9 +802,33 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
       
       {!show3D && (
         <canvas
-          // ... your existing canvas props
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '1px',  // Minimal size when in 2D mode
+            height: '1px',
+            opacity: 0,    // Make it invisible
+            pointerEvents: 'none'  // Prevent interaction
+          }}
         />
       )}
+      <footer className="footer">
+        <a href="https://github.com/escottalexander/biomes" target="_blank" rel="noopener noreferrer">
+          fork me
+        </a>
+        <span className="separator">•</span>
+        <span>
+          inspired by{' '}
+          <a href="https://www.fiveoutofnine.com/blog/on-chain-worlds-with-terrain-generation" target="_blank" rel="noopener noreferrer">
+          5/9's blog post
+          </a>
+          {' '}and <a href="https://www.youtube.com/watch?v=CSa5O6knuwI" target="_blank" rel="noopener noreferrer">
+          Henrik Kniberg's video
+          </a>
+        </span>
+      </footer>
+
       <style jsx>{`
         .world-generator {
           padding: 1rem;
@@ -1053,6 +1077,36 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
         @media (max-width: 600px) {
           .controls {
             margin-bottom: 0.5rem;
+          }
+        }
+
+        .footer {
+          margin-top: 2rem;
+          padding: 1rem;
+          text-align: center;
+          font-size: 1.1rem;
+          color: #666;
+        }
+
+        .footer a {
+          color: #0070f3;
+          text-decoration: none;
+        }
+
+        .footer a:hover {
+          text-decoration: underline;
+        }
+
+        .separator {
+          margin: 0 0.5rem;
+          color: #999;
+        }
+
+        @media (max-width: 600px) {
+          .footer {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            font-size: 0.8rem;
           }
         }
       `}</style>
