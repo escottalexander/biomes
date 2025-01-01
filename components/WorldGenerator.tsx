@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { PerlinNoise } from '../utils/perlin';
 import { Biome, WorldConfig } from '../types/WorldGenerator';
+import World3DView from './World3DView';
 
 const BIOMES: Biome[] = [
     // Water bodies - nested by depth
@@ -292,10 +293,10 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [config, setConfig] = useState({ ...defaultConfig, ...userConfig });
-  const [baseSeed, setBaseSeed] = useState(Math.floor(Math.random() * 1000000));
+  const [baseSeed, setBaseSeed] = useState(123456);
   const [currentRows, setCurrentRows] = useState<Array<Array<[number, number, string]>>>([]);
   const [currentCols, setCurrentCols] = useState<Array<Array<[number, number, string]>>>([]);
-  const [viewportOffset, setViewportOffset] = useState({ x: 0, y: 0 });
+  const [viewportOffset, setViewportOffset] = useState({ x: 1000, y: 1000 });
   const [tooltip, setTooltip] = useState<{ show: boolean; text: string; x: number; y: number }>({
     show: false,
     text: '',
@@ -305,6 +306,13 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
   const pixelSize = 4;
   const cols = Math.floor(config.width / pixelSize);
   const rows = Math.floor(config.height / pixelSize);
+  const [show3D, setShow3D] = useState(false);
+  const [previewsVisible, setPreviewsVisible] = useState(false);
+
+  // Set random seed after initial render (client-side only)
+  useEffect(() => {
+    setBaseSeed(Math.floor(Math.random() * 1000000));
+  }, []); // Empty dependency array means this runs once after mount
 
   const generatePixel = useCallback((x: number, y: number) => {
     const heightNoise = new PerlinNoise(config.heightNoiseConfig.seed);
@@ -621,86 +629,156 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
     setConfig(newConfig);
     setCurrentRows([]);
     setCurrentCols([]);
-    setViewportOffset({ x: 0, y: 0 });
+    setViewportOffset({ x: 1000, y: 1000 });
   }, [config]);
 
-  const refreshWorld = useCallback(() => {
-    setCurrentRows([]);
-    setCurrentCols([]);
-    setViewportOffset({ x: 0, y: 0 });
-  }, []);
+  const generateHeightMap = useCallback(() => {
+    const heightMap: number[][] = [];
+    const heightNoise = new PerlinNoise(config.heightNoiseConfig.seed);
+    
+    for (let y = 0; y < rows; y++) {
+      heightMap[y] = [];
+      for (let x = 0; x < cols; x++) {
+        const height = (generateOctaveNoise(
+          heightNoise,
+          x + viewportOffset.x,
+          y + viewportOffset.y,
+          config.heightNoiseConfig
+        ) + 1) / 2;
+        heightMap[y][x] = height;
+      }
+    }
+    return heightMap;
+  }, [cols, rows, config.heightNoiseConfig, viewportOffset]);
+
+  const generateBiomeColors = useCallback(() => {
+    const colors: string[][] = [];
+    const heightNoise = new PerlinNoise(config.heightNoiseConfig.seed);
+    const moistureNoise = new PerlinNoise(config.moistureNoiseConfig.seed);
+    const temperatureNoise = new PerlinNoise(config.temperatureNoiseConfig.seed);
+    
+    for (let y = 0; y < rows; y++) {
+      colors[y] = [];
+      for (let x = 0; x < cols; x++) {
+        const height = (generateOctaveNoise(heightNoise, x + viewportOffset.x, y + viewportOffset.y, config.heightNoiseConfig) + 1) / 2;
+        const moisture = (generateOctaveNoise(moistureNoise, x + viewportOffset.x, y + viewportOffset.y, config.moistureNoiseConfig) + 1) / 2;
+        const temperature = (generateOctaveNoise(temperatureNoise, x + viewportOffset.x, y + viewportOffset.y, config.temperatureNoiseConfig) + 1) / 2;
+        
+        const biome = getBiome(height, moisture, temperature);
+        colors[y][x] = biome.color;
+      }
+    }
+    return colors;
+  }, [cols, rows, config, viewportOffset]);
+
+  const heightMap = useMemo(() => generateHeightMap(), [generateHeightMap]);
+  const biomeColors = useMemo(() => generateBiomeColors(), [generateBiomeColors]);
 
   return (
     <div className="world-generator">
+      <div className="preview-section">
+        <button 
+          className="preview-toggle"
+          onClick={() => setPreviewsVisible(!previewsVisible)}
+        >
+          {previewsVisible ? '▼ Hide' : '▶ Show'} Noise Maps
+        </button>
+        <div className={`preview-maps ${previewsVisible ? 'visible' : ''}`}>
+          <div className="preview-container">
+            <h3>Height Map</h3>
+            <svg
+              id="height-preview"
+              width="200"
+              height="200"
+              style={{ border: '1px solid #ccc' }}
+            />
+          </div>
+          <div className="preview-container">
+            <h3>Moisture Map</h3>
+            <svg
+              id="moisture-preview"
+              width="200"
+              height="200"
+              style={{ border: '1px solid #ccc' }}
+            />
+          </div>
+          <div className="preview-container">
+            <h3>Temperature Map</h3>
+            <svg
+              id="temperature-preview"
+              width="200"
+              height="200"
+              style={{ border: '1px solid #ccc' }}
+            />
+          </div>
+        </div>
+      </div>
       <div className="controls">
         <div className="seed-info">
           <p>Base Seed: {baseSeed}</p>
-          <p>Viewport: ({viewportOffset.x}, {viewportOffset.y})</p>
+          <p>Coords: ({viewportOffset.x}, {viewportOffset.y})</p>
         </div>
         <div className="world-controls">
           <button onClick={regenerateWorld}>New Seed</button>
-          <button onClick={refreshWorld}>Refresh</button>
         </div>
-        <div className="direction-controls">
-          <button onClick={() => addRow('top')}>↑</button>
-          <div className="horizontal-controls">
-            <button onClick={() => addColumn('left')}>←</button>
-            <button onClick={() => addColumn('right')}>→</button>
+        <div className="map-container">
+          <button className="nav-button top" onClick={() => addRow('top')}>↑</button>
+          <div className="horizontal-container">
+            <button className="nav-button left" onClick={() => addColumn('left')}>←</button>
+            <div className="svg-container">
+              <svg
+                ref={svgRef}
+                width={config.width}
+                height={config.height}
+                style={{ border: '1px solid #ccc' }}
+              />
+              {tooltip.show && (
+                <div className="tooltip" style={{
+                  position: 'fixed',
+                  left: `${tooltip.x}px`,
+                  top: `${tooltip.y}px`,
+                  transform: 'translate(-50%, -100%)',
+                  whiteSpace: 'pre-line'
+                }}>
+                  {tooltip.text}
+                </div>
+              )}
+            </div>
+            <button className="nav-button right" onClick={() => addColumn('right')}>→</button>
           </div>
-          <button onClick={() => addRow('bottom')}>↓</button>
+          <button className="nav-button bottom" onClick={() => addRow('bottom')}>↓</button>
         </div>
       </div>
-      <div className="preview-maps">
-        <div className="preview-container">
-          <h3>Height Map</h3>
-          <svg
-            id="height-preview"
-            width="200"
-            height="200"
-            style={{ border: '1px solid #ccc' }}
-          />
-        </div>
-        <div className="preview-container">
-          <h3>Moisture Map</h3>
-          <svg
-            id="moisture-preview"
-            width="200"
-            height="200"
-            style={{ border: '1px solid #ccc' }}
-          />
-        </div>
-        <div className="preview-container">
-          <h3>Temperature Map</h3>
-          <svg
-            id="temperature-preview"
-            width="200"
-            height="200"
-            style={{ border: '1px solid #ccc' }}
-          />
-        </div>
-      </div>
-      <div className="svg-container">
-        <svg
-          ref={svgRef}
-          width={config.width}
-          height={config.height}
-          style={{ border: '1px solid #ccc' }}
+      <button
+        onClick={() => setShow3D(!show3D)}
+        style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          padding: '8px 16px',
+          backgroundColor: show3D ? '#ff4444' : '#4444ff',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          zIndex: 1000,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}
+      >
+        {show3D ? 'Show 2D' : 'Show 3D'}
+      </button>
+      
+      <World3DView 
+        heightMap={heightMap}
+        biomeColors={biomeColors}
+        isVisible={show3D} 
+      />
+      
+      {!show3D && (
+        <canvas
+          // ... your existing canvas props
         />
-        {tooltip.show && (
-          <div 
-            className="tooltip"
-            style={{
-              position: 'fixed',
-              left: `${tooltip.x}px`,
-              top: `${tooltip.y}px`,
-              transform: 'translate(-50%, -100%)',
-              whiteSpace: 'pre-line'
-            }}
-          >
-            {tooltip.text}
-          </div>
-        )}
-      </div>
+      )}
       <style jsx>{`
         .world-generator {
           display: flex;
@@ -720,30 +798,33 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
         .seed-info p {
           margin: 0.25rem 0;
         }
-        .direction-controls {
+        .map-container {
+          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.5rem;
+          gap: 8px;
         }
-        .horizontal-controls {
+        .horizontal-container {
           display: flex;
-          gap: 1rem;
+          align-items: center;
+          gap: 8px;
+        }
+        .nav-button {
+          padding: 12px 20px;
+          font-size: 20px;
+          background: white;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        .nav-button:hover {
+          background: #f0f0f0;
         }
         .svg-container {
           border: 1px solid #ccc;
           border-radius: 8px;
-        }
-        button {
-          padding: 0.5rem 1rem;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          background: white;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-        button:hover {
-          background: #f0f0f0;
         }
         .tooltip {
           background: rgba(0, 0, 0, 0.8);
@@ -755,21 +836,54 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
           z-index: 1000;
           text-align: left;
         }
-        .preview-maps {
-          display: flex;
-          gap: 1rem;
+        .preview-section {
+          width: 100%;
+          max-width: 800px;
           margin-bottom: 1rem;
         }
-        .preview-container {
+        .preview-toggle {
+          width: 100%;
+          padding: 8px;
+          background: #f0f0f0;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          cursor: pointer;
+          text-align: left;
+          font-size: 14px;
+          transition: background-color 0.2s;
+        }
+        .preview-toggle:hover {
+          background: #e0e0e0;
+        }
+        .preview-maps {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+          padding: 0 1rem;
+          background: white;
+          border: 1px solid #ccc;
+          border-top: none;
+          border-radius: 0 0 4px 4px;
           display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
+          gap: 1rem;
+          justify-content: center;
         }
-        .preview-container h3 {
-          margin: 0;
-          font-size: 1rem;
+        .preview-maps.visible {
+          max-height: 300px;
+          padding: 1rem;
         }
+        .preview-container {
+          opacity: 0;
+          transform: translateY(-10px);
+          transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .preview-maps.visible .preview-container {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .preview-container:nth-child(1) { transition-delay: 0.1s; }
+        .preview-container:nth-child(2) { transition-delay: 0.2s; }
+        .preview-container:nth-child(3) { transition-delay: 0.3s; }
       `}</style>
     </div>
   );
