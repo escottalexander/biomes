@@ -1,88 +1,38 @@
-# Perlin Noise World Generator
+# Procedural World Generator
 
-An interactive 2D world generator that uses multiple layers of Perlin noise to create diverse, procedurally generated terrain with various biomes.
+A procedural world generator that uses Perlin noise to create infinite, explorable terrain with various biomes. The generator creates coherent landscapes by combining three layers of Perlin noise:
 
-## Getting Started
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Run the development server:
-```bash
-npm run dev
-```
-
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+- Height map (terrain elevation)
+- Moisture map (affects biome distribution)
+- Temperature map (influences climate zones)
 
 ## Features
 
-- Real-time world generation using Perlin noise
-- Multiple biome types based on height, moisture, and temperature
-- Interactive navigation using WASD keys or arrow buttons
-- Infinite world generation in any direction
-- Deterministic world generation using seeds
+- Infinite terrain generation
+- 2D and 3D visualization
+- Multiple biomes based on height, moisture, and temperature
+- Real-time terrain exploration
+- Mobile-responsive design
 
-## Controls
+## How It Works
 
-- **W/↑**: Move viewport up
-- **A/←**: Move viewport left
-- **S/↓**: Move viewport down
-- **D/→**: Move viewport right
-- **Regenerate World**: Creates a new world with fresh random seeds
+The generator uses layered Perlin noise with different seeds to create natural-looking terrain. Each point in the world is determined by:
+1. Height value (determines elevation)
+2. Moisture value (affects vegetation)
+3. Temperature value (influences climate)
 
-## Technical Implementation
+These values combine to select appropriate biomes, creating a diverse and coherent world.
 
-### Perlin Noise
+## Credits
 
-The world generation uses three layers of Perlin noise:
-1. **Height**: Determines elevation (oceans, beaches, land, mountains)
-2. **Moisture**: Controls humidity (deserts, grasslands, forests)
-3. **Temperature**: Affects climate zones (frozen, temperate, tropical)
+Inspired by:
+- [5/9's blog post on on-chain worlds](https://www.fiveoutofnine.com/blog/on-chain-worlds-with-terrain-generation)
+- [Henrik Kniberg's terrain generation video](https://www.youtube.com/watch?v=CSa5O6knuwI)
 
-Each noise layer uses different parameters:
-- Height: Large scale (100) with 6 octaves for varied terrain
-- Moisture: Medium scale (150) with 4 octaves for weather patterns
-- Temperature: Largest scale (200) with 4 octaves for climate zones
+## Live Demo
 
-### Biome System
+[View the live demo](https://perlin-noise-world-gen.vercel.app)
 
-Biomes are determined by combining three factors:
-- Height (0-1): From deep ocean to mountain peaks
-- Moisture (0-1): From arid to very wet
-- Temperature (0-1): From frozen to tropical
+## License
 
-Examples:
-- Deep Ocean: height 0-0.2
-- Desert: height 0.35-0.8, moisture 0-0.2, temperature 0.7-1
-- Snowy Mountains: height 0.7-1, temperature 0-0.3
-
-### World Generation
-
-1. Uses a single base seed for deterministic generation
-2. Derives separate seeds for height, moisture, and temperature using a hash function
-3. Generates terrain in chunks as the user explores
-4. Maintains viewport position while adding new terrain
-5. Caches generated terrain to prevent regeneration
-
-### Technical Stack
-
-- Next.js for the framework
-- TypeScript for type safety
-- SVG for rendering
-- Custom Perlin noise implementation
-- React hooks for state management
-
-## Architecture
-
-```
-├── components/
-│   └── WorldGenerator.tsx    # Main world generation component
-├── utils/
-│   └── perlin.ts            # Perlin noise implementation
-├── types/
-│   └── WorldGenerator.ts    # TypeScript interfaces
-└── pages/
-    └── index.tsx            # Main page component
-```
+MIT
