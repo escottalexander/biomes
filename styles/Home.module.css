@@ -15,8 +15,13 @@
 .title {
   margin: 0;
   line-height: 1.15;
-  font-size: 2rem;
+  font-size: 2.5rem;
   text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  background: linear-gradient(45deg, #4444ff, #44ff44);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
 }
 
 .worldContainer {
@@ -110,7 +115,7 @@
   }
   
   .title {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     margin-bottom: 1rem;
   }
   
