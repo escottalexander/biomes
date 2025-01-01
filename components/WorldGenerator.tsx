@@ -226,8 +226,8 @@ const generateSeedFromBase = (baseSeed: number, type: 'height' | 'moisture' | 't
 };
 
 const defaultConfig: WorldConfig = {
-  width: 800,
-  height: 600,
+  width: typeof window !== 'undefined' ? Math.min(1200, window.innerWidth - 16) : 1200,
+  height: typeof window !== 'undefined' ? Math.min(600, window.innerHeight - 200) : 600,
   heightNoiseConfig: {
     scale: 50,
     octaves: 6,
@@ -674,6 +674,20 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
   const heightMap = useMemo(() => generateHeightMap(), [generateHeightMap]);
   const biomeColors = useMemo(() => generateBiomeColors(), [generateBiomeColors]);
 
+  // Add resize handler
+  useEffect(() => {
+    const handleResize = () => {
+      setConfig(prev => ({
+        ...prev,
+        width: Math.min(1200, window.innerWidth - 16),
+        height: Math.min(600, window.innerHeight - 200)
+      }));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="world-generator">
       <div className="preview-section">
@@ -722,9 +736,9 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
           <button onClick={regenerateWorld}>New Seed</button>
         </div>
         <div className="map-container">
-          <button className="nav-button top" onClick={() => addRow('top')}>↑</button>
+          <button className="nav-button top desktop-nav" onClick={() => addRow('top')}>↑</button>
           <div className="horizontal-container">
-            <button className="nav-button left" onClick={() => addColumn('left')}>←</button>
+            <button className="nav-button left desktop-nav" onClick={() => addColumn('left')}>←</button>
             <div className="svg-container">
               <svg
                 ref={svgRef}
@@ -744,9 +758,21 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
                 </div>
               )}
             </div>
-            <button className="nav-button right" onClick={() => addColumn('right')}>→</button>
+            <button className="nav-button right desktop-nav" onClick={() => addColumn('right')}>→</button>
           </div>
-          <button className="nav-button bottom" onClick={() => addRow('bottom')}>↓</button>
+          <button className="nav-button bottom desktop-nav" onClick={() => addRow('bottom')}>↓</button>
+
+          <div className="mobile-nav-buttons">
+            <div></div>
+            <button className="nav-button" onClick={() => addRow('top')}>↑</button>
+            <div></div>
+            <button className="nav-button" onClick={() => addColumn('left')}>←</button>
+            <div></div>
+            <button className="nav-button" onClick={() => addColumn('right')}>→</button>
+            <div></div>
+            <button className="nav-button" onClick={() => addRow('bottom')}>↓</button>
+            <div></div>
+          </div>
         </div>
       </div>
       <button
@@ -781,51 +807,92 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
       )}
       <style jsx>{`
         .world-generator {
+          padding: 1rem;
+          max-width: 100%;
+          box-sizing: border-box;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 1rem;
         }
-        .controls {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1rem;
-        }
-        .seed-info {
-          text-align: center;
-        }
-        .seed-info p {
-          margin: 0.25rem 0;
-        }
+
         .map-container {
-          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 8px;
+          width: 100%;
         }
+
         .horizontal-container {
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 8px;
+          width: 100%;
         }
+
         .nav-button {
-          padding: 12px 20px;
-          font-size: 20px;
+          padding: 8px 16px;
+          font-size: 16px;
           background: white;
           border: 1px solid #ccc;
           border-radius: 4px;
           cursor: pointer;
           transition: background-color 0.2s;
+          min-width: 44px;
+          min-height: 44px;
         }
-        .nav-button:hover {
-          background: #f0f0f0;
+
+        @media (max-width: 600px) {
+          .nav-button.top, 
+          .nav-button.left, 
+          .nav-button.right {
+            display: none;
+          }
+
+          .mobile-nav-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 8px;
+          }
+
+          .mobile-nav-buttons button {
+            grid-column: auto;
+          }
+
+          .horizontal-container {
+            justify-content: center;
+          }
         }
+
         .svg-container {
           border: 1px solid #ccc;
           border-radius: 8px;
+          overflow: hidden;
+          display: flex;
+          justify-content: center;
         }
+
+        svg {
+          display: block;
+          max-width: 100%;
+          height: auto;
+        }
+
+        @media (max-width: 600px) {
+          .world-generator {
+            padding: 0.5rem;
+          }
+
+          .svg-container {
+            width: 100%;
+            overflow-x: auto;
+          }
+        }
+
         .tooltip {
           background: rgba(0, 0, 0, 0.8);
           color: white;
@@ -840,6 +907,8 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
           width: 100%;
           max-width: 800px;
           margin-bottom: 1rem;
+          position: relative;
+          z-index: 1;
         }
         .preview-toggle {
           width: 100%;
@@ -858,8 +927,7 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
         .preview-maps {
           max-height: 0;
           overflow: hidden;
-          transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-          padding: 0 1rem;
+          transition: max-height 0.3s ease-out;
           background: white;
           border: 1px solid #ccc;
           border-top: none;
@@ -869,21 +937,124 @@ export const WorldGenerator: React.FC<{ config?: Partial<WorldConfig> }> = ({
           justify-content: center;
         }
         .preview-maps.visible {
-          max-height: 300px;
+          max-height: 800px;
           padding: 1rem;
         }
         .preview-container {
-          opacity: 0;
-          transform: translateY(-10px);
-          transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
         }
-        .preview-maps.visible .preview-container {
-          opacity: 1;
-          transform: translateY(0);
+
+        @media (max-width: 600px) {
+          .preview-section {
+            overflow: visible;
+          }
+
+          .preview-maps {
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+          }
+
+          .preview-maps.visible {
+            max-height: none;
+            height: auto;
+            overflow-y: visible;
+            padding: 1rem;
+          }
+
+          .preview-container {
+            width: 100%;
+            margin: 1rem 0;
+          }
+
+          .preview-container:first-child {
+            margin-top: 0;
+          }
+
+          .preview-container:last-child {
+            margin-bottom: 0;
+          }
+
+          .preview-container h3 {
+            margin: 0.5rem 0;
+          }
         }
-        .preview-container:nth-child(1) { transition-delay: 0.1s; }
-        .preview-container:nth-child(2) { transition-delay: 0.2s; }
-        .preview-container:nth-child(3) { transition-delay: 0.3s; }
+
+        /* Desktop navigation buttons */
+        .desktop-nav {
+          display: block;
+        }
+
+        /* Hide mobile nav buttons on desktop */
+        .mobile-nav-buttons {
+          display: none;
+        }
+
+        @media (max-width: 600px) {
+          .desktop-nav {
+            display: none; /* Hide desktop nav buttons on mobile */
+          }
+
+          .mobile-nav-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 8px;
+          }
+        }
+
+        .controls {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .seed-info {
+          text-align: center;
+          background: #f5f5f5;
+          padding: 0.5rem 1rem;
+          border-radius: 4px;
+          min-width: 200px;
+        }
+
+        .seed-info p {
+          margin: 0.25rem 0;
+        }
+
+        .world-controls {
+          display: flex;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .world-controls button {
+          padding: 8px 16px;
+          font-size: 14px;
+          background: white;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+
+        .world-controls button:hover {
+          background: #f0f0f0;
+        }
+
+        @media (max-width: 600px) {
+          .controls {
+            margin-bottom: 0.5rem;
+          }
+        }
       `}</style>
     </div>
   );

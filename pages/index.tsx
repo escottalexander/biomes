@@ -7,7 +7,8 @@ const Home: NextPage = () => {
   return (
     <div className={styles.container}>
       <Head>
-        <title>Perlin Noise World Generator</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <title>World Generator</title>
         <meta name="description" content="2D world generator using Perlin noise" />
         <link rel="icon" href="/favicon.ico" />
       </Head>

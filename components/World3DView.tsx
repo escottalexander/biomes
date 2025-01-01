@@ -181,6 +181,7 @@ const World3DView = ({ heightMap, biomeColors, isVisible }: World3DViewProps) =>
         width: '100%',
         height: '100%',
         display: isVisible ? 'block' : 'none',
+        zIndex: 2
       }}
     />
   );
